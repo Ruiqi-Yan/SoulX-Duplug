@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Full-Duplex Speech Dialogue</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script> -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-card">
+      <div class="spinner-wrapper">
+        <span class="loading-spinner"></span>
+        <span class="loading-success hidden">✓</span>
+      </div>
+      <p id="loadingMessage">Connecting to server...</p>
+      <button id="loadingConfirmBtn" class="loading-btn hidden">Start Experience</button>
+    </div>
+  </div>
+  <div class="status-banner">
+    <div class="status-card">
+      <div class="status-icon">🎙️</div>
+      <div class="status-body">
+        <span class="status-label">VAD Status</span>
+        <div id="vadStatus" class="status-value" data-state="idle">Waiting for user speech</div>
+      </div>
+    </div>
+    <div class="status-card transcription-card">
+      <div class="status-icon">📝</div>
+      <div class="status-body">
+        <span class="status-label">User Transcription</span>
+        <div id="userTranscription" class="status-transcription user-transcription">No transcription yet</div>
+      </div>
+    </div>
+  </div>
+  <div class="main-container">
+    <div class="hero-copy">
+      <span class="hero-tag">Testing</span>
+      <h1>SoulX-Duplug Demo</h1>
+    </div>
+    <div class="circle-container">
+      <div id="voiceCircle" class="voice-circle">
+        <span id="circleStatus" class="circle-status">READY</span>
+      </div>
+    </div>
+    <div class="bottom-controls">
+      <button id="startBtn" class="control-btn">Start</button>
+      <button id="stopBtn" class="control-btn" disabled>Stop</button>
+    </div>
+    <canvas id="waveformCanvas"></canvas>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">Full-Duplex Speech Dialogue System Supported By SoulX-Duplug</div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
