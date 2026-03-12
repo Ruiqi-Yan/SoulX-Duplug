@@ -29,6 +29,10 @@ SoulX-Duplug is a **plug-and-play streaming semantic VAD model** designed for re
 ## 🔥 Demo
 
 
+https://github.com/user-attachments/assets/cf5b040e-bc87-4fa9-ae6f-669db80a49eb
+
+
+
 Try SoulX-Duplug online on [this page](https://soulx-duplug.sjtuxlance.com/).
 
 
