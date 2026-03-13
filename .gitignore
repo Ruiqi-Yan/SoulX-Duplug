@@ -5,6 +5,7 @@ pretrain_models
 
 # debug
 tmp
+.vscode
 
 # data
 eval/benchmark

@@ -1,46 +1,65 @@
-# SoulX-Duplug
-
-*Preview Version of SoulX-Duplug*
-
 <div align="center">
     <h1>
     SoulX-Duplug
     </h1>
     <p>
-    Official code for <br>
-    <b><em>SoulX-Duplug: </em></b>
+    Official code for enabling full-duplex speech interaction with<br>
+    <b><em>SoulX-Duplug: Plug-and-Play Streaming State Prediction Module for Realtime Full-Duplex Speech Conversation</em></b>
     </p>
+    <p>
+    <img src="assets/SoulX-Duplug-logo.png" alt="SoulX-Duplug Logo" style="width: 200px; height: 200px;">
+    </p>
+    <p>
+    </p>
+    <!-- <a href="https://github.com/Soul-AILab/SoulX-Duplug"><img src="https://img.shields.io/badge/Platform-linux-lightgrey" alt="version"></a>
+    <a href="https://github.com/Soul-AILab/SoulX-Duplug"><img src="https://img.shields.io/badge/Python-3.10-blue" alt="version"></a> -->
+    <a href="https://soulx-duplug.sjtuxlance.com/"><img src="https://img.shields.io/badge/🌐%20Online-Demo-blue" alt="Online Demo"></a>
+    <a href="https://arxiv.org/"><img src="https://img.shields.io/badge/arXiv-xxx-B31B1B?logo=arxiv&logoColor=white.svg" alt="arXiv"></a>
+    <a href="https://huggingface.co/Soul-AILab/SoulX-Duplug-0.6B"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-yellow" alt="HF-Model"></a>
+    <a href="https://huggingface.co/datasets/Soul-AILab/SoulX-Duplug-Eval"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Eval-yellow" alt="HF-Eval"></a>
+    <a href="https://github.com/Soul-AILab/SoulX-Duplug"><img src="https://img.shields.io/badge/License-Apache%202.0-green.svg" alt="Apache-2.0"></a>
 </div>
 
 
-##  Overview
-SoulX-Duplug is a plug-and-play streaming semantic VAD model designed for full-duplex speech dialogue.
+## ✨ Overview
+SoulX-Duplug is a **plug-and-play streaming semantic VAD model** designed for real-time full-duplex speech conversation. Through text-guided streaming state prediction, SoulX-Duplug enables low-latency, semantic-aware streaming dialogue management. We also release SoulX-Duplug-Eval, a complementary evaluation set for benchmarking full-duplex spoken dialogue systems. For more details, please refer to our paper. Both SoulX-Duplug and SoulX-Duplug-Eval are available on Hugging Face.
 
 
 
-## 🔥 Demos
+## 🔥 Demo
 
 
-For more examples, see demo page.
+https://github.com/user-attachments/assets/cf5b040e-bc87-4fa9-ae6f-669db80a49eb
+
+
+
+Try SoulX-Duplug online on [this page](https://soulx-duplug.sjtuxlance.com/).
 
 
 ## 🚀 News
 - 
 
 
-## Install
+## 🛠️ Install
 
 ### Clone and Install
 Here are instructions for installing on Linux.
+
 - Clone the repo
 ```bash
 git clone https://github.com/Soul-AILab/SoulX-Duplug.git
 cd SoulX-Duplug
 ```
 
+- Install system dependencies
+```bash
+sudo apt-get update
+sudo apt-get install ffmpeg sox libsox-dev -y
+```
+
 - Install Conda: please see https://docs.conda.io/en/latest/miniconda.html
 
-- Create Conda env:
+- Create Conda env
 ```bash
 conda create -n soulx-duplug -y python=3.10
 conda activate soulx-duplug
@@ -110,25 +129,23 @@ For usage (see [example_client.py](https://github.com/Soul-AILab/SoulX-Duplug/bl
 
 ### Dialogue System
 
-We implemented a demo full-duplex speech dialogue system based on SoulX-Duplug. You can refer to [dialogue_system](https://github.com/Soul-AILab/SoulX-Duplug/blob/main/dialogue_system/README.md).
+We implemented a demo full-duplex spoken dialogue system based on SoulX-Duplug. See the [`dialogue-system` branch](https://github.com/Soul-AILab/SoulX-Duplug/blob/dialogue-system/dialogue_system/README.md) for the demo code.
 
 
-## TODOs
+## 📌 TODOs
 - [ ] Publish the technical report.
 
 
-## Citation
+## 🔖 Citation
+If you find this work useful in your research, please consider citing:
 
 ```bibtex
 coming soon
 ```
 
-## License
+## 📜 License
+This project is licensed under the Apache 2.0 License.
 
 
-
-## Acknowledgment
-Great thank is given to QwenLM, GLM-4-Voice, [chinese_text_normalization](https://github.com/speechio/chinese_text_normalization), Paraformer, Sensevoice, and SLAM-LLM for their open-source contribution.
-
-
-## Contact Us
+## 🙏 Acknowledgment
+Great thank is given to [QwenLM](https://github.com/QwenLM), [GLM-4-Voice](https://github.com/zai-org/GLM-4-Voice), [chinese_text_normalization](https://github.com/speechio/chinese_text_normalization), [Paraformer](https://github.com/modelscope/FunASR/wiki/paraformer), [Sensevoice](https://github.com/FunAudioLLM/SenseVoice), [ChatTTS](https://github.com/2noise/ChatTTS), [SoulX-Podcast](https://github.com/Soul-AILab/SoulX-Podcast), and [SLAM-LLM](https://github.com/X-LANCE/SLAM-LLM) for their open-source contribution.
