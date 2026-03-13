@@ -1,6 +1,6 @@
-# Full-Duplex Speech Dialogue System
+# Full-Duplex Spoken Dialogue System
 
-*This directory contains the implementation of a full-duplex speech dialogue system based on SoulX-Duplug.*
+*This directory contains the implementation of a full-duplex spoken dialogue system based on SoulX-Duplug.*
 
 ## Preparations
 Make sure you are in the `SoulX-Duplug/dialogue_system` directory and all the model weights are downloaded to the `SoulX-Duplug/pretrained_models` folder.
@@ -11,8 +11,6 @@ Make sure you are in the `SoulX-Duplug/dialogue_system` directory and all the mo
 conda create -n dialogue-system -y python=3.10.16
 conda activate dialogue-system
 conda install -y -c conda-forge pynini==2.1.5
-sudo apt-get update
-sudo apt-get install sox libsox-dev -y
 pip install -r requirements.txt
 ```
 
@@ -39,16 +37,19 @@ Currently, we utilize two excellent open-source projects as our TTS models: [Ind
 - For IndexTTS-vLLM, please refer to [IndexTTS-vLLM](https://github.com/Ksuriuri/index-tts-vllm) for environment setup and model download.
 
     ```bash
-    cd modules/index_tts_vllm
     conda create -n index-tts-vllm python=3.12
     conda activate index-tts-vllm
-    pip install -r requirements.txt
+    pip install -r modules/index_tts_vllm/requirements.txt
     modelscope download --model kusuriuri/Index-TTS-1.5-vLLM --local_dir ../pretrained_models/Index-TTS-1.5-vLLM
     ```
 
-- For Async CosyVoice, you can refer to [Async CosyVoice](https://github.com/qi-hua/async_cosyvoice) for model download. Our dialogue-system environment already includes the necessary dependencies.
+- For Async CosyVoice, you can refer to [Async CosyVoice](https://github.com/qi-hua/async_cosyvoice) for environment setup and model download.
 
     ```bash
+    conda create -n cosyvoice2 python=3.10.16 -y
+    conda activate cosyvoice2
+    conda install -y -c conda-forge pynini==2.1.5
+    pip install -r modules/CosyVoice/async_cosyvoice/requirements.txt
     huggingface-cli download --resume-download swulling/CosyVoice2-0.5B-vllm --local-dir ../pretrained_models/CosyVoice2-0.5B
     cp -r modules/CosyVoice/async_cosyvoice/CosyVoice2-0.5B/* ../pretrained_models/CosyVoice2-0.5B/
     cd modules/CosyVoice/async_cosyvoice/runtime/async_grpc
@@ -60,7 +61,7 @@ Currently, we utilize two excellent open-source projects as our TTS models: [Ind
 
 ### Launch TTS Server
 ```bash
-conda activate ...  # index-tts-vllm for IndexTTS-vLLM, dialogue-system for Async CosyVoice
+conda activate ...  # index-tts-vllm for IndexTTS-vLLM, cosyvoice2 for Async CosyVoice
 bash scripts/tts_server.sh
 ```
 
@@ -83,10 +84,11 @@ bash deploy.sh
 ```
 
 
-## Todo List
+## TODOs
+- [ ] Support more half-duplex spoken dialogue models.
 
 
 
 ## Acknowledgment
 
-Great thank is given to QwenLM, CosyVoice, Async CosyVoice, IndexTTS, IndexTTS-vLLM, ChatTTS, and X-Talk for their open-source contribution.
+Great thank is given to [QwenLM](https://github.com/QwenLM), [CosyVoice](https://github.com/FunAudioLLM/CosyVoice), [Async CosyVoice](https://github.com/qi-hua/async_cosyvoice), [IndexTTS](https://github.com/index-tts/index-tts), [IndexTTS-vLLM](https://github.com/Ksuriuri/index-tts-vllm), [ChatTTS](https://github.com/2noise/ChatTTS), and [X-Talk](https://github.com/xcc-zach/xtalk) for their open-source contribution.

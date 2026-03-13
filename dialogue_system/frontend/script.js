@@ -21,21 +21,85 @@ let ttsStates = null; // Int32Array [writeIndex, readIndex]
 // Buffer size: capacity for ~120 seconds at 24k
 const TTS_BUFFER_SIZE = 24000 * 120;
 
-// ==================== SocketIO ====================
-const socket = io({
-  timeout: 600000, // 600s timeout
-  reconnectionAttempts: 5, // Reconnection attempts
-  reconnectionDelay: 2000, // Reconnection delay interval
-});
+// ==================== Native WebSocket ====================
+// Determine protocol (ws or wss)
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsUrl = `${protocol}//${window.location.host}/ws`;
 
-// Connection confirmation
-socket.on('connect', () => console.log('[Socket] connected:', socket.id));
-socket.on('connect_ack', data => console.log('Connection confirmed:', data));
+let socket = new WebSocket(wsUrl);
+socket.binaryType = 'arraybuffer'; // Important for receiving audio
 
-// Receive backend text response
-socket.on('text_response', data => {
-  console.log('[ASR+LLM]', data.result);
-});
+socket.onopen = () => {
+  console.log('[WebSocket] connected');
+};
+
+socket.onclose = () => {
+  console.log('[WebSocket] disconnected');
+};
+
+socket.onerror = (error) => {
+  console.error('[WebSocket] error:', error);
+};
+
+// Handle incoming messages
+socket.onmessage = (event) => {
+  const data = event.data;
+
+  // Check if data is binary (Audio Chunk)
+  if (data instanceof ArrayBuffer) {
+    handleAudioChunk(data);
+    return;
+  }
+
+  // Otherwise handle JSON messages
+  try {
+    const msg = JSON.parse(data);
+    const eventName = msg.event;
+    const payload = msg.data;
+
+    switch (eventName) {
+      case 'connect_ack':
+        console.log('Connection confirmed:', payload);
+        break;
+      case 'text_response':
+        console.log('[LLM]', payload.text);
+        break;
+      case 'vad_loading':
+        handleVadLoading(payload);
+        break;
+      case 'vad_status':
+        if (vadStatusEl) {
+          vadStatusEl.textContent = payload.message || payload.state || "Unknown Status";
+          vadStatusEl.dataset.state = payload.state || "idle";
+        }
+        break;
+      case 'circle_status':
+        updateCircleState(payload.status);
+        break;
+      case 'user_transcription':
+        handleUserTranscription(payload);
+        break;
+      case 'stop_audio':
+        console.log('Received stop_audio signal');
+        if (ttsNode) ttsNode.port.postMessage({ type: 'abort' });
+        updateCircleState("LISTENING");
+        break;
+      case 'pause_audio':
+        if (ttsNode) ttsNode.port.postMessage({ type: 'pause' });
+        updateCircleState("LISTENING");
+        break;
+      case 'resume_audio':
+        if (ttsNode) ttsNode.port.postMessage({ type: 'resume' });
+        updateCircleState('SPEAKING');
+        break;
+      default:
+        console.log('Unknown event:', eventName);
+    }
+  } catch (e) {
+    console.error('Failed to parse message:', e);
+  }
+};
+
 
 // DOM elements
 const vadStatusEl = document.getElementById("vadStatus");
@@ -48,8 +112,7 @@ const loadingConfirmBtn = document.getElementById("loadingConfirmBtn");
 const loadingSpinner = document.querySelector(".loading-spinner");
 const loadingSuccess = document.querySelector(".loading-success");
 
-// Handle Loading Events
-socket.on("vad_loading", ({ state, message }) => {
+function handleVadLoading({ state, message }) {
   loadingOverlay.classList.remove("hidden");
   loadingMessage.textContent = message;
 
@@ -62,7 +125,7 @@ socket.on("vad_loading", ({ state, message }) => {
     loadingSuccess.classList.remove("hidden");
     loadingConfirmBtn.classList.remove("hidden");
   }
-});
+}
 
 // Close loading overlay
 loadingConfirmBtn.addEventListener("click", async () => {
@@ -75,18 +138,7 @@ loadingConfirmBtn.addEventListener("click", async () => {
   }
 });
 
-// Socket.IO listeners
-socket.on("vad_status", ({ state, message }) => {
-  if (!vadStatusEl) return;
-  vadStatusEl.textContent = message || state || "Unknown Status";
-  vadStatusEl.dataset.state = state || "idle";
-});
-
-socket.on("circle_status", ({ status }) => {
-  updateCircleState(status);
-});
-
-socket.on("user_transcription", ({ text }) => {
+function handleUserTranscription({ text }) {
   if (!userTranscriptionEl) return;
 
   // Truncate logic: keep last N chars if too long
@@ -108,7 +160,7 @@ socket.on("user_transcription", ({ text }) => {
   userTranscriptionEl.textContent = displayText;
   userTranscriptionEl.classList.add("updated");
   window.setTimeout(() => userTranscriptionEl.classList.remove("updated"), 400);
-});
+}
 
 // ==================== TTS Engine (SharedArrayBuffer + AudioWorklet) ====================
 async function initTTSAudioEngine() {
@@ -154,8 +206,8 @@ async function initTTSAudioEngine() {
   }
 }
 
-// Receive TTS raw PCM chunk (Binary)
-socket.on('audio_chunk', (arrayBuffer) => {
+// Handle Receive Audio Chunk (Binary)
+function handleAudioChunk(arrayBuffer) {
   if (!ttsSab || !ttsFloat32Data) return;
 
   // Resume context if suspended
@@ -186,34 +238,7 @@ socket.on('audio_chunk', (arrayBuffer) => {
   Atomics.store(ttsStates, 0, writeIndex);
 
   updateCircleState('SPEAKING');
-});
-
-// Stop playback
-socket.on('stop_audio', (msg) => {
-  console.log('Received stop_audio signal');
-  if (ttsNode) {
-    ttsNode.port.postMessage({ type: 'abort' });
-  }
-  updateCircleState("LISTENING");
-});
-
-// Pause playback
-socket.on('pause_audio', (msg) => {
-  // Use worklet message to pause reading from buffer
-  if (ttsNode) {
-    ttsNode.port.postMessage({ type: 'pause' });
-  }
-  updateCircleState("LISTENING");
-});
-
-// Resume playback
-socket.on('resume_audio', (msg) => {
-  // Use worklet message to resume reading
-  if (ttsNode) {
-    ttsNode.port.postMessage({ type: 'resume' });
-  }
-  updateCircleState('SPEAKING');
-});
+}
 
 // ==================== Audio Capture ====================
 startBtn.addEventListener('click', async () => {
@@ -229,6 +254,14 @@ startBtn.addEventListener('click', async () => {
 
     // Separate context for recording to avoid sample rate mess
     audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+
+    // Send Audio Configuration
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        event: "config_audio",
+        data: { sample_rate: audioContext.sampleRate }
+      }));
+    }
 
     // Ensure AudioContext is active (required by some browser policies)
     if (audioContext.state === 'suspended') {
@@ -251,12 +284,14 @@ startBtn.addEventListener('click', async () => {
       const input = e.inputBuffer.getChannelData(0);
       // Float32 -> Int16
       const int16 = new Int16Array(input.length);
-      // Get actual sample rate (could be 44100 or 48000)
-      const sampleRate = audioContext.sampleRate;
       for (let i = 0; i < input.length; i++) {
         int16[i] = Math.max(-1, Math.min(1, input[i])) * 0x7fff;
       }
-      socket.emit('audio_data', int16.buffer, sampleRate);
+
+      // Native WebSocket Send (Binary)
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(int16.buffer);
+      }
     };
 
     startBtn.disabled = true;
@@ -274,7 +309,12 @@ startBtn.addEventListener('click', async () => {
 
 stopBtn.addEventListener('click', () => {
   listening = false;
-  socket.emit('duplex_stop'); // Tell backend to stop logic
+
+  // Send Stop signal via JSON
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ event: 'duplex_stop' }));
+  }
+
   // Interrupt TTS
   if (ttsNode) ttsNode.port.postMessage({ type: 'abort' });
 

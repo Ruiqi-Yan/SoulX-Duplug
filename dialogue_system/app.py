@@ -5,9 +5,14 @@ import queue
 import base64
 import logging
 import threading
+import uuid
+import json
+import asyncio
 import numpy as np
-from flask import Flask, request, send_from_directory
-from flask_socketio import SocketIO, emit
+from typing import Dict, Optional
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi.staticfiles import StaticFiles
+from starlette.websockets import WebSocketState
 
 from clients.tts_client import IndexTTS_VLLM, Cosyvoice_Streaming_VLLM
 from clients.llm_client import QwenLLM_stream
@@ -19,16 +24,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__, static_folder="frontend")
-socketio = SocketIO(app, cors_allowed_origins="*", ping_timeout=600)
+app = FastAPI()
 
 
 # Headers required for SharedArrayBuffer
-@app.after_request
-def add_security_headers(response):
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
     response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
     return response
+
+
+# Global event loop reference for thread-safe websocket sending
+main_loop = None
+
+
+@app.on_event("startup")
+async def startup_event():
+    global main_loop
+    main_loop = asyncio.get_running_loop()
 
 
 class Config:
@@ -42,12 +57,16 @@ class Config:
 class ChatSession:
     """Manages the full lifecycle of a single user session."""
 
-    def __init__(self, client_id, vad_instance):
+    def __init__(self, client_id, vad_instance, websocket: WebSocket):
         self.client_id = client_id
         self.vad = vad_instance
+        self.websocket = websocket
         self.lock = threading.Lock()
         self._stop_event = threading.Event()  # Internal event to signal interruption
         self.is_active = True
+
+        # Audio config
+        self.input_sample_rate = Config.SAMPLE_RATE
 
         # State for pending message commitment (handling interruption)
         self.pending_message = None
@@ -62,13 +81,13 @@ class ChatSession:
     def interrupt(self):
         """Interrupts current inference or audio playback."""
         self._stop_event.set()
-        socketio.emit("stop_audio", {"message": "interrupt"}, room=self.client_id)
-        socketio.emit("circle_status", {"status": "LISTENING"}, room=self.client_id)
+        emit_to_room(self.client_id, "stop_audio", {"message": "interrupt"})
+        emit_to_room(self.client_id, "circle_status", {"status": "LISTENING"})
 
     def pause(self):
         """Pauses audio playback."""
-        socketio.emit("pause_audio", {"message": "pause"}, room=self.client_id)
-        socketio.emit("circle_status", {"status": "LISTENING"}, room=self.client_id)
+        emit_to_room(self.client_id, "pause_audio", {"message": "pause"})
+        emit_to_room(self.client_id, "circle_status", {"status": "LISTENING"})
 
     def reset_interrupt(self):
         """Creates a new stop event for the next processing cycle, leaving the old one set."""
@@ -79,16 +98,16 @@ class SessionManager:
     """Thread-safe manager for active chat sessions."""
 
     def __init__(self):
-        self.sessions = {}
+        self.sessions: Dict[str, ChatSession] = {}
         self._lock = threading.Lock()
 
-    def create_session(self, client_id, vad_instance):
+    def create_session(self, client_id, vad_instance, websocket: WebSocket):
         with self._lock:
-            session = ChatSession(client_id, vad_instance)
+            session = ChatSession(client_id, vad_instance, websocket)
             self.sessions[client_id] = session
             return session
 
-    def get_session(self, client_id) -> ChatSession:
+    def get_session(self, client_id) -> Optional[ChatSession]:
         return self.sessions.get(client_id)
 
     def remove_session(self, client_id):
@@ -135,8 +154,30 @@ print("System initialized: VAD Pool, LLM client, TTS client ready.")
 
 
 def emit_to_room(client_id, event, data):
-    """Helper function to safely emit SocketIO messages to a specific room."""
-    socketio.emit(event, data, room=client_id)
+    """Helper function to safely emit WebSocket messages to a specific client."""
+    session = session_manager.get_session(client_id)
+    if not session or not main_loop:
+        return
+
+    ws = session.websocket
+
+    if ws.client_state != WebSocketState.CONNECTED:
+        return
+
+    # Helper wrapper to run async send in the main loop
+    async def _send():
+        try:
+            if event == "audio_chunk":
+                # Audio data: send raw bytes
+                await ws.send_bytes(data)
+            else:
+                # Text/JSON data
+                message = json.dumps({"event": event, "data": data})
+                await ws.send_text(message)
+        except Exception as e:
+            logger.error(f"Failed to send to {client_id}: {e}")
+
+    asyncio.run_coroutine_threadsafe(_send(), main_loop)
 
 
 def pipeline_worker(client_id, audio_segment, sample_rate):
@@ -295,119 +336,131 @@ def pipeline_worker(client_id, audio_segment, sample_rate):
         logger.error(f"Error in pipeline for {client_id}: {e}", exc_info=True)
 
 
-# ==== SocketIO Event Handlers ====
-@socketio.on("connect")
-def handle_connect():
-    sid = request.sid
-    logger.info(f"New connection request: {sid}")
+# ==== WebSocket Endpoint & Processing ====
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    client_id = str(uuid.uuid4())
+    logger.info(f"New connection: {client_id}")
 
-    def assign_task(client_id):
-        """Background task to initialize session and VAD resource."""
-        try:
-            emit_to_room(
-                client_id,
-                "vad_loading",
-                {"state": "loading", "message": "Acquiring model resources..."},
-            )
-            instance = vad_pool.acquire()
+    session = None
 
-            # Bind session-specific callbacks to the VAD instance
-            instance.status_callback = lambda s, m: emit_to_room(
-                client_id, "vad_status", {"state": s, "message": m}
-            )
-            instance.transcription_callback = lambda t: emit_to_room(
-                client_id, "user_transcription", {"text": t}
-            )
-            instance.circle_callback = lambda s: emit_to_room(
-                client_id, "circle_status", {"status": s}
-            )
-
-            session_manager.create_session(client_id, instance)
-
-            emit_to_room(client_id, "connect_ack", {"client_id": client_id})
-            emit_to_room(
-                client_id,
-                "vad_loading",
-                {"state": "ready", "message": "Model loaded, ready to experience"},
-            )
-            logger.info(f"Session initialized for {client_id}")
-        except Exception as e:
-            logger.error(f"Failed to assign model: {e}")
-
-    socketio.start_background_task(assign_task, sid)
-
-
-@socketio.on("disconnect")
-def handle_disconnect():
-    sid = request.sid
-    session = session_manager.remove_session(sid)
-    if session:
-        session.is_active = False
-        session.stop_event.set()
-        vad_pool.release(session.vad)  # Return VAD instance to pool
-    logger.info(f"Client disconnected and resources released: {sid}")
-
-
-@socketio.on("duplex_stop")
-def handle_duplex_stop():
-    """Handles manual stop signal from the frontend."""
-    sid = request.sid
-    session = session_manager.get_session(sid)
-    if session:
-        if session.interruption_time is None:
-            session.interruption_time = time.time()
-        session.stop_event.set()
-        session.reset_interrupt()
-        logger.info(f"Session manually stopped by client: {sid}")
-
-
-@socketio.on("audio_data")
-def handle_audio_data(data, sample_rate):
-    """Processes incoming raw binary audio chunks."""
-    sid = request.sid
-    session = session_manager.get_session(sid)
-    if not session:
-        return
-
-    # Convert binary buffer to float32 normalized array
-    audio_chunk = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
-
-    if sample_rate != Config.SAMPLE_RATE:
-        audio_chunk = soxr.resample(
-            audio_chunk, sample_rate, Config.SAMPLE_RATE, quality="VHQ"
+    try:
+        # Initial Handshake / Setup
+        emit_to_room(
+            client_id,
+            "vad_loading",
+            {"state": "loading", "message": "Acquiring model resources..."},
         )
 
-    with session.lock:
-        # Feed audio into VAD logic
-        segment = session.vad.process(audio_chunk)
+        # We need a session object to put in session_manager before emit_to_room works fully.
+        loop = asyncio.get_running_loop()
+        vad_instance = await loop.run_in_executor(None, vad_pool.acquire)
 
-    # 3. Decision logic based on VAD result
-    if segment is not None:
-        if isinstance(segment, list) and segment[0] is None:
-            # Case: User started speaking while the bot was responding (Barge-in)
-            if session.interruption_time is None:
-                session.interruption_time = time.time()
-            session.interrupt()
-        else:
-            # Case: A complete utterance is detected
-            threading.Thread(
-                target=pipeline_worker,
-                args=(sid, segment, Config.SAMPLE_RATE),
-                daemon=True,
-            ).start()
+        # Bind Callbacks
+        vad_instance.status_callback = lambda s, m: emit_to_room(
+            client_id, "vad_status", {"state": s, "message": m}
+        )
+        vad_instance.transcription_callback = lambda t: emit_to_room(
+            client_id, "user_transcription", {"text": t}
+        )
+        vad_instance.circle_callback = lambda s: emit_to_room(
+            client_id, "circle_status", {"status": s}
+        )
+
+        session = session_manager.create_session(client_id, vad_instance, websocket)
+
+        # Now emission works via session_manager lookups
+        emit_to_room(client_id, "connect_ack", {"client_id": client_id})
+        emit_to_room(
+            client_id,
+            "vad_loading",
+            {"state": "ready", "message": "Model loaded, ready to experience"},
+        )
+        logger.info(f"Session initialized for {client_id}")
+
+        while True:
+            # Receive Message
+            try:
+                message = await websocket.receive()
+            except WebSocketDisconnect:
+                logger.info(f"Client disconnected: {client_id}")
+                break
+
+            if "bytes" in message and message["bytes"]:
+                # Binary Audio Data
+                data = message["bytes"]
+                # Convert buffer to float32
+                audio_chunk = (
+                    np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
+                )
+
+                current_sr = session.input_sample_rate
+                if current_sr != Config.SAMPLE_RATE:
+                    audio_chunk = soxr.resample(
+                        audio_chunk, current_sr, Config.SAMPLE_RATE, quality="VHQ"
+                    )
+
+                with session.lock:
+                    segment = session.vad.process(audio_chunk)
+
+                if segment is not None:
+                    if isinstance(segment, list) and segment[0] is None:
+                        # Barge-in
+                        if session.interruption_time is None:
+                            session.interruption_time = time.time()
+                        session.interrupt()
+                    else:
+                        # Complete Utterance
+                        threading.Thread(
+                            target=pipeline_worker,
+                            args=(client_id, segment, Config.SAMPLE_RATE),
+                            daemon=True,
+                        ).start()
+
+            elif "text" in message and message["text"]:
+                # JSON Control Message
+                try:
+                    payload = json.loads(message["text"])
+                    event = payload.get("event")
+
+                    if event == "duplex_stop":
+                        if session.interruption_time is None:
+                            session.interruption_time = time.time()
+                        session.stop_event.set()
+                        session.reset_interrupt()
+                        logger.info(f"Session manually stopped by client: {client_id}")
+
+                    elif event == "config_audio":
+                        # Client sending sample rate configuration
+                        sr_data = payload.get("data", {})
+                        sr = sr_data.get("sample_rate")
+                        if sr:
+                            session.input_sample_rate = int(sr)
+                            logger.info(f"[{client_id}] Sample rate set to {sr}")
+
+                except json.JSONDecodeError:
+                    logger.warning(f"[{client_id}] Received invalid JSON")
+
+    except WebSocketDisconnect:
+        logger.info(f"Client disconnected: {client_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}", exc_info=True)
+    finally:
+        if session:
+            session.is_active = False
+            session.stop_event.set()
+            vad_pool.release(session.vad)
+            session_manager.remove_session(client_id)
+        logger.info(f"Session cleaned up: {client_id}")
 
 
 # ==== Static Resource Routing ====
-@app.route("/")
-def index():
-    return send_from_directory("frontend", "index.html")
-
-
-@app.route("/<path:path>")
-def serve_file(path):
-    return send_from_directory("frontend", path)
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
 
 if __name__ == "__main__":
+    import uvicorn
+
     logger.info(f"Server starting on http://localhost:{Config.PORT}")
-    socketio.run(app, host="0.0.0.0", port=Config.PORT, debug=False)
+    uvicorn.run(app, host="0.0.0.0", port=Config.PORT)

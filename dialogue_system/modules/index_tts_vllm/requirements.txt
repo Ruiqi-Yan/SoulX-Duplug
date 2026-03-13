@@ -9,6 +9,7 @@ ninja
 modelscope
 munch==4.0.0
 loguru
+transformers==4.57.3
 
 WeTextProcessing; platform_machine != "Darwin"
 wetext; platform_system == "Darwin"

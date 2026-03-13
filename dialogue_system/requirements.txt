@@ -129,7 +129,6 @@ omegaconf==2.3.0
 onnx==1.17.0
 onnxruntime-gpu==1.19.0
 openai==2.15.0
-openai-whisper==20240930
 opencv-python-headless==4.11.0.86
 oss2==2.19.1
 outlines==0.1.11
@@ -185,7 +184,7 @@ rich-toolkit==0.17.1
 rignore==0.7.6
 rpds-py==0.30.0
 rsa==4.9.1
-ruamel.yaml==0.17.21
+ruamel.yaml==0.17.28
 ruamel.yaml.clib==0.2.15
 safetensors==0.7.0
 scikit-learn==1.7.2
@@ -231,7 +230,6 @@ uvicorn==0.40.0
 uvloop==0.22.1
 vllm==0.7.3
 watchfiles==1.1.1
-websocket==0.2.1
 websocket-client==1.8.0
 websockets==12.0
 Werkzeug==3.1.5
