@@ -133,6 +133,10 @@ For usage (see [example_client.py](https://github.com/Soul-AILab/SoulX-Duplug/bl
 We implemented a demo full-duplex spoken dialogue system based on SoulX-Duplug. See the [`dialogue-system` branch](https://github.com/Soul-AILab/SoulX-Duplug/blob/dialogue-system/dialogue_system/README.md) for the demo code.
 
 
+## 📌 TODOs
+- [ ] Publish the technical report.
+
+
 ## 🔖 Citation
 If you find this work useful in your research, please consider citing:
 
