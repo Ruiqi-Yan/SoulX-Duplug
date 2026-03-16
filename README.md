@@ -31,6 +31,7 @@ To facilitate benchmarking and research in this area, we also release **[SoulX-D
 ## 🔥 Demo
 
 Below is a demo of **full-duplex speech interaction** powered by SoulX-Duplug.
+
 https://github.com/user-attachments/assets/cf5b040e-bc87-4fa9-ae6f-669db80a49eb
 
 You can also try the **online interactive demo** here:
