@@ -83,12 +83,20 @@ conda activate dialogue-system
 bash deploy.sh
 ```
 
+Visit http://localhost:55556 to chat with the full-duplex spoken dialogue system.
 
-## TODOs
-- [ ] Support more half-duplex spoken dialogue models.
+You can also replace the LLM+TTS component with any other half-duplex spoken dialogue model according to your needs.
 
 
 
 ## Acknowledgment
 
-Great thank is given to [QwenLM](https://github.com/QwenLM), [CosyVoice](https://github.com/FunAudioLLM/CosyVoice), [Async CosyVoice](https://github.com/qi-hua/async_cosyvoice), [IndexTTS](https://github.com/index-tts/index-tts), [IndexTTS-vLLM](https://github.com/Ksuriuri/index-tts-vllm), [ChatTTS](https://github.com/2noise/ChatTTS), and [X-Talk](https://github.com/xcc-zach/xtalk) for their open-source contribution.
+We thank the following projects for their open-source contributions:
+
+- [QwenLM](https://github.com/QwenLM)
+- [CosyVoice](https://github.com/FunAudioLLM/CosyVoice)
+- [Async CosyVoice](https://github.com/qi-hua/async_cosyvoice)
+- [IndexTTS](https://github.com/index-tts/index-tts)
+- [IndexTTS-vLLM](https://github.com/Ksuriuri/index-tts-vllm)
+- [ChatTTS](https://github.com/2noise/ChatTTS)
+- [X-Talk](https://github.com/xcc-zach/xtalk)

@@ -21,115 +21,94 @@
 </div>
 
 
-## ✨ Overview
-SoulX-Duplug is a **plug-and-play streaming semantic VAD model** designed for real-time full-duplex speech conversation. Through text-guided streaming state prediction, SoulX-Duplug enables low-latency, semantic-aware streaming dialogue management. We also release SoulX-Duplug-Eval, a complementary evaluation set for benchmarking full-duplex spoken dialogue systems. For more details, please refer to our paper. Both SoulX-Duplug and SoulX-Duplug-Eval are available on Hugging Face.
+# Full-Duplex Spoken Dialogue System
+
+*This branch contains the implementation of a full-duplex spoken dialogue system based on SoulX-Duplug.*
+
+## ⚙️ Preparations
+Change directory to `SoulX-Duplug/dialogue_system` and make sure all the model weights are downloaded to the `SoulX-Duplug/pretrained_models` folder.
 
 
-
-## 🔥 Demo
-
-
-https://github.com/user-attachments/assets/cf5b040e-bc87-4fa9-ae6f-669db80a49eb
-
-
-
-Try SoulX-Duplug online on [this page](https://soulx-duplug.sjtuxlance.com/).
-
-
-## 🚀 News
-- 
-
-
-## 🛠️ Install
-
-### Clone and Install
-Here are instructions for installing on Linux.
-
-- Clone the repo
+### Environment Setup
 ```bash
-git clone https://github.com/Soul-AILab/SoulX-Duplug.git
-cd SoulX-Duplug
-```
-
-- Install system dependencies
-```bash
-sudo apt-get update
-sudo apt-get install ffmpeg sox libsox-dev -y
-```
-
-- Install Conda: please see https://docs.conda.io/en/latest/miniconda.html
-
-- Create Conda env
-```bash
-conda create -n soulx-duplug -y python=3.10
-conda activate soulx-duplug
+conda create -n dialogue-system -y python=3.10.16
+conda activate dialogue-system
+conda install -y -c conda-forge pynini==2.1.5
 pip install -r requirements.txt
-# If you are in mainland China, you can set the mirror as follows:
-pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host=mirrors.aliyun.com
 ```
 
 
+### SoulX-Duplug
+Install SoulX-Duplug according to the instructions in the [main README](https://github.com/Soul-AILab/SoulX-Duplug/blob/main/README.md).
 
-### Model Download
 
-Download via hf:
+### LLM
+We utilize Qwen2.5-7B-Instruct as the LLM. Please download the model weights to `pretrained_models/Qwen2.5-7B-Instruct`.
+
 ```bash
-# If you are in mainland China, please first set the mirror:
-export HF_ENDPOINT=https://hf-mirror.com
-huggingface-cli download --resume-download Soul-AILab/SoulX-Duplug-0.6B --local-dir pretrained_models
-```
+huggingface-cli download --resume-download Qwen/Qwen2.5-7B-Instruct --local-dir ../pretrained_models/Qwen2.5-7B-Instruct
 
-Download via python:
-```python
-from huggingface_hub import snapshot_download
-snapshot_download("Soul-AILab/SoulX-Duplug-0.6B", local_dir="pretrained_models") 
-```
-
-Download via git clone:
-```bash
-# Make sure you have git-lfs installed (https://git-lfs.com)
-git lfs install
-git clone https://huggingface.co/Soul-AILab/SoulX-Duplug-0.6B pretrained_models
+# If you are in mainland China
+modelscope download --model Qwen/Qwen2.5-7B-Instruct --local_dir ../pretrained_models/Qwen2.5-7B-Instruct
 ```
 
 
+### TTS
+Currently, we utilize two excellent open-source projects as our TTS models: [IndexTTS-vLLM](https://github.com/Ksuriuri/index-tts-vllm) and [Async CosyVoice](https://github.com/qi-hua/async_cosyvoice).
 
-### Basic Usage
-We have wrapped the model as a server. You can simply start it with the following commands:
-```bash
-bash run.sh
-```
 
-For usage (see [example_client.py](https://github.com/Soul-AILab/SoulX-Duplug/blob/main/example_client.py) for reference), streamingly send your audio query (in chunks) to the server, and the server will return its prediction of the current dialogue state in a `dict`:
+- For IndexTTS-vLLM, please refer to [IndexTTS-vLLM](https://github.com/Ksuriuri/index-tts-vllm) for environment setup and model download.
 
-- Format:
-    ```python
-    {
-        "type": "turn_state",
-        "session_id": ,         # session_id
-        "state": {
-            "state": ,          # predicted state: "idle", "nonidle", "speak", or "blank"
-            "text": ,           # (optional) asr result of user's turn
-            "asr_segment": ,    # (optional) asr result of current chunk
-            "asr_buffer": ,     # (optional) asr result of last 3.2s
-        },
-        "ts": time.time(),      # timestamp
-    }
+    ```bash
+    conda create -n index-tts-vllm python=3.12
+    conda activate index-tts-vllm
+    pip install -r modules/index_tts_vllm/requirements.txt
+    modelscope download --model kusuriuri/Index-TTS-1.5-vLLM --local_dir ../pretrained_models/Index-TTS-1.5-vLLM
     ```
 
-- **"idle"** indicates that the current audio chunk contains no semantic content (e.g., silence, noise, or backchannel).
+- For Async CosyVoice, you can refer to [Async CosyVoice](https://github.com/qi-hua/async_cosyvoice) for environment setup and model download.
 
-- **"nonidle"** indicates that the current audio chunk contains semantic content. In this case, `"asr_segment"` returns the ASR result of the current chunk, and `"asr_buffer"` returns the ASR result of the accumulated audio over the past 3.2 seconds.
+    ```bash
+    conda create -n cosyvoice2 python=3.10.16 -y
+    conda activate cosyvoice2
+    conda install -y -c conda-forge pynini==2.1.5
+    pip install -r modules/CosyVoice/async_cosyvoice/requirements.txt
+    huggingface-cli download --resume-download swulling/CosyVoice2-0.5B-vllm --local-dir ../pretrained_models/CosyVoice2-0.5B
+    cp -r modules/CosyVoice/async_cosyvoice/CosyVoice2-0.5B/* ../pretrained_models/CosyVoice2-0.5B/
+    cd modules/CosyVoice/async_cosyvoice/runtime/async_grpc
+    python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cosyvoice.proto
+    ```
 
-- **"speak"** indicates that up to the current chunk, the user is judged to have stopped speaking and the utterance is semantically complete, meaning the system can take the turn. In this case, `"asr_segment"` returns the ASR result of the current chunk, `"asr_buffer"` returns the ASR result of the accumulated audio over the past 3.2 seconds, and `"text"` returns the complete transcription of the user’s utterance for this turn. 
 
-- **"blank"** indicates that the current unprocessed streaming input does not yet fill a full chunk; the server has cached the input and is waiting for the next query.
+## 🚀 Run the Service
 
+### Launch TTS Server
+```bash
+conda activate ...  # index-tts-vllm for IndexTTS-vLLM, cosyvoice2 for Async CosyVoice
+bash scripts/tts_server.sh
+```
 
+### Launch LLM Server
+```bash
+conda activate soulx-duplug
+bash scripts/llm_server.sh
+```
 
-### Dialogue System
+### Launch VAD Server
+```bash
+conda activate soulx-duplug
+bash scripts/vad_server.sh
+```
 
-We implemented a demo full-duplex spoken dialogue system based on SoulX-Duplug. See the [`dialogue-system` branch](https://github.com/Soul-AILab/SoulX-Duplug/blob/dialogue-system/dialogue_system/README.md) for the demo code.
+### Launch Dialogue System
+```bash
+conda activate dialogue-system
+bash deploy.sh
+```
+
+Visit `http://localhost:55556` to chat with the full-duplex spoken dialogue system.
+
+You can also replace the LLM+TTS component with any other half-duplex spoken dialogue model according to your needs.
 
 
 ## 📌 TODOs
@@ -144,8 +123,16 @@ coming soon
 ```
 
 ## 📜 License
-This project is licensed under the Apache 2.0 License.
+This project is licensed under the [Apache 2.0 License](LICENSE).
 
 
 ## 🙏 Acknowledgment
-Great thank is given to [QwenLM](https://github.com/QwenLM), [GLM-4-Voice](https://github.com/zai-org/GLM-4-Voice), [chinese_text_normalization](https://github.com/speechio/chinese_text_normalization), [Paraformer](https://github.com/modelscope/FunASR/wiki/paraformer), [Sensevoice](https://github.com/FunAudioLLM/SenseVoice), [ChatTTS](https://github.com/2noise/ChatTTS), [SoulX-Podcast](https://github.com/Soul-AILab/SoulX-Podcast), and [SLAM-LLM](https://github.com/X-LANCE/SLAM-LLM) for their open-source contribution.
+We thank the following open-source projects for their contributions:
+
+- [QwenLM](https://github.com/QwenLM)
+- [CosyVoice](https://github.com/FunAudioLLM/CosyVoice)
+- [Async CosyVoice](https://github.com/qi-hua/async_cosyvoice)
+- [IndexTTS](https://github.com/index-tts/index-tts)
+- [IndexTTS-vLLM](https://github.com/Ksuriuri/index-tts-vllm)
+- [ChatTTS](https://github.com/2noise/ChatTTS) 
+- [X-Talk](https://github.com/xcc-zach/xtalk)
