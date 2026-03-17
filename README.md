@@ -14,7 +14,7 @@
     <!-- <a href="https://github.com/Soul-AILab/SoulX-Duplug"><img src="https://img.shields.io/badge/Platform-linux-lightgrey" alt="version"></a>
     <a href="https://github.com/Soul-AILab/SoulX-Duplug"><img src="https://img.shields.io/badge/Python-3.10-blue" alt="version"></a> -->
     <a href="https://soulx-duplug.sjtuxlance.com/"><img src="https://img.shields.io/badge/🌐%20Online-Demo-blue" alt="Online Demo"></a>
-    <a href="https://arxiv.org/"><img src="https://img.shields.io/badge/arXiv-xxx-B31B1B?logo=arxiv&logoColor=white.svg" alt="arXiv"></a>
+    <a href="https://arxiv.org/abs/2603.14877"><img src="https://img.shields.io/badge/arXiv-2603.14877-B31B1B?logo=arxiv&logoColor=white.svg" alt="arXiv"></a>
     <a href="https://huggingface.co/Soul-AILab/SoulX-Duplug-0.6B"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-yellow" alt="HF-Model"></a>
     <a href="https://huggingface.co/datasets/Soul-AILab/SoulX-Duplug-Eval"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Eval-yellow" alt="HF-Eval"></a>
     <a href="https://github.com/Soul-AILab/SoulX-Duplug"><img src="https://img.shields.io/badge/License-Apache%202.0-green.svg" alt="Apache-2.0"></a>
@@ -112,14 +112,22 @@ You can also replace the LLM+TTS component with any other half-duplex spoken dia
 
 
 ## 📌 TODOs
-- [ ] Publish the technical report.
+- [x] Publish the technical report.
 
 
 ## 🔖 Citation
 If you find this work useful in your research, please consider citing:
 
 ```bibtex
-coming soon
+@misc{yan2026soulxduplug,
+      title={SoulX-Duplug: Plug-and-Play Streaming State Prediction Module for Realtime Full-Duplex Speech Conversation}, 
+      author={Ruiqi Yan and Wenxi Chen and Zhanxun Liu and Ziyang Ma and Haopeng Lin and Hanlin Wen and Hanke Xie and Jun Wu and Yuzhe Liang and Yuxiang Zhao and Pengchao Feng and Jiale Qian and Hao Meng and Yuhang Dai and Shunshun Yin and Ming Tao and Lei Xie and Kai Yu and Xinsheng Wang and Xie Chen},
+      year={2026},
+      eprint={2603.14877},
+      archivePrefix={arXiv},
+      primaryClass={eess.AS},
+      url={https://arxiv.org/abs/2603.14877}, 
+}
 ```
 
 ## 📜 License
