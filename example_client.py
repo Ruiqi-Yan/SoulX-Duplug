@@ -56,7 +56,12 @@ class TurnTaking:
             print(f"[ASR of current chunk]: {data['state'].get('asr_segment', '')}")
         elif data["state"]["state"] == "speak":
             print(f"User finished speaking, taking turn")
-            print(f"User transcription: {data['state'].get('text', '')}")
+            if "text" in data["state"]:
+                print(f"User transcription: {data['state'].get('text', '')}")
+            elif "audio" in data["state"]:
+                user_utterance = np.frombuffer(
+                    base64.b64decode(data["state"]["audio"]), dtype=np.float32
+                )
         elif data["state"]["state"] == "blank":
             print(
                 "Accumulated unprocessed audio less than one chunk (160ms), wait for next request"

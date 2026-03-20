@@ -18,6 +18,7 @@ infer_config:
   max_mistake_num: 3
   far_field_threshold: 0.02
   developer_mode: false
+  return_audio: false
 
   input:
     chunk_size: 2560

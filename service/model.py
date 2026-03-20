@@ -1,4 +1,5 @@
 import os, sys
+import base64
 import torch
 import random
 import numpy as np
@@ -268,17 +269,32 @@ class TurnModel:
                 if self.wait_idle_cnt >= self.config.infer_config["max_wait_num"]:
                     self._log("Continuous silence after wait, triggering reply")
                     if self.speech_detected:
-                        segment = self.cascade_asr.recognize(
-                            self.buffer_for_asr, self.sampling_rate
-                        )
-                        # self.clear_turn()
-                        self.reset()
-                        return {
-                            "state": "speak",
-                            "text": segment,
-                            "asr_segment": delta_text,
-                            "asr_buffer": asr_buffer,
-                        }
+                        if self.config.infer_config.return_audio:
+                            audio_b64 = base64.b64encode(
+                                np.asarray(
+                                    self.buffer_for_asr, dtype=np.float32
+                                ).tobytes()
+                            ).decode()
+                            # self.clear_turn()
+                            self.reset()
+                            return {
+                                "state": "speak",
+                                "audio": audio_b64,
+                                "asr_segment": delta_text,
+                                "asr_buffer": asr_buffer,
+                            }
+                        else:
+                            segment = self.cascade_asr.recognize(
+                                self.buffer_for_asr, self.sampling_rate
+                            )
+                            # self.clear_turn()
+                            self.reset()
+                            return {
+                                "state": "speak",
+                                "text": segment,
+                                "asr_segment": delta_text,
+                                "asr_buffer": asr_buffer,
+                            }
 
             if (
                 self.past_state["history_len"] > 200
@@ -339,17 +355,30 @@ class TurnModel:
                 self.buffer_for_asr = np.concatenate(
                     [self.buffer_for_asr, process_chunk]
                 )
-                segment = self.cascade_asr.recognize(
-                    self.buffer_for_asr, self.sampling_rate
-                )
-                # self.clear_turn()
-                self.reset()
-                return {
-                    "state": "speak",
-                    "text": segment,
-                    "asr_segment": delta_text,
-                    "asr_buffer": asr_buffer,
-                }
+                if self.config.infer_config.return_audio:
+                    audio_b64 = base64.b64encode(
+                        np.asarray(self.buffer_for_asr, dtype=np.float32).tobytes()
+                    ).decode()
+                    # self.clear_turn()
+                    self.reset()
+                    return {
+                        "state": "speak",
+                        "audio": audio_b64,
+                        "asr_segment": delta_text,
+                        "asr_buffer": asr_buffer,
+                    }
+                else:
+                    segment = self.cascade_asr.recognize(
+                        self.buffer_for_asr, self.sampling_rate
+                    )
+                    # self.clear_turn()
+                    self.reset()
+                    return {
+                        "state": "speak",
+                        "text": segment,
+                        "asr_segment": delta_text,
+                        "asr_buffer": asr_buffer,
+                    }
             # self.clear_turn()
             self.reset()
 

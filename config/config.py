@@ -178,6 +178,7 @@ class InferConfig:
     far_field_threshold: float = 0.02
     developer_mode: bool = False
     single_round: bool = False
+    return_audio: bool = False
     config_path: str = "config/config.yaml"
 
     input: dict = field(
