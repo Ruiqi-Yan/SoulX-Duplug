@@ -111,8 +111,22 @@ Visit `http://localhost:55556` to chat with the full-duplex spoken dialogue syst
 You can also replace the LLM+TTS component with any other half-duplex spoken dialogue model according to your needs.
 
 
+## 🧪 Evaluation
+
+We provide offline inference code for simulating real-time interaction in `dialogue_system/offline_infer.py`, along with evaluation scripts in `dialogue_system/eval`.
+
+The evaluation scripts are largely consistent with the [official Full-Duplex-Bench repository](https://github.com/DanielLin94144/Full-Duplex-Bench/tree/bb595759b84934f81f1522e222e3976b51c94ff0), with the addition of a `get_transcript/asr_zh.py` script. The GPT-4o score is not evaluated for the *user_interruption* setting, as we focus primarily on turn management capability.
+
+For benchmarking, we use the following config:
+- `infer_config.max_wait_num: 5`
+- `infer_config.far_field_threshold: 0`
+- For Chinese evaluation, we use `paraformer`. The prompt for TTS is `dialogue_system/modules/index_tts_vllm/assets/ada-female.wav`
+- For English evaluation, we use `sensevoice en`. The prompt for TTS is `dialogue_system/modules/index_tts_vllm/assets/john-male.wav`
+
+
 ## 📌 TODOs
 - [x] Publish the technical report.
+- [x] Release evaluation scripts.
 
 
 ## 🔖 Citation
